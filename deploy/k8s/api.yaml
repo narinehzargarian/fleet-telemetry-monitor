@@ -1,0 +1,62 @@
+# API: stateless, so it scales horizontally. Rolling updates replace one pod at a time,
+# and the readiness probe keeps traffic away from a pod until Postgres and Redis are reachable.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleet-api
+  labels: { app: fleet-api }
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels: { app: fleet-api }
+  template:
+    metadata:
+      labels: { app: fleet-api }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+    spec:
+      securityContext: { runAsNonRoot: true }
+      containers:
+        - name: api
+          image: ghcr.io/narinehzargarian/fleet-telemetry-monitor:latest
+          command: ["/usr/local/bin/server"]
+          ports: [{ containerPort: 8080 }]
+          envFrom:
+            - secretRef: { name: fleet-secrets }   # DATABASE_URL, REDIS_ADDR, INGEST_TOKEN
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8080 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleet-api
+spec:
+  selector: { app: fleet-api }
+  ports: [{ port: 80, targetPort: 8080 }]
+---
+# Scale the API on CPU when many stations report at once.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: fleet-api
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: fleet-api }
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } }

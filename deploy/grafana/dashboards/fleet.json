@@ -1,0 +1,44 @@
+{
+  "title": "Fleet Health",
+  "uid": "fleet-health",
+  "schemaVersion": 39,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "type": "stat", "title": "Stations online", "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [{ "expr": "sum(fleet_station_online)" }]
+    },
+    {
+      "type": "stat", "title": "Readings / sec", "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [{ "expr": "sum(rate(fleet_readings_processed_total{outcome=\"stored\"}[1m]))" }]
+    },
+    {
+      "type": "stat", "title": "Alerts / min", "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [{ "expr": "sum(rate(fleet_alerts_raised_total[5m])) * 60" }]
+    },
+    {
+      "type": "stat", "title": "p95 processing (s)", "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(fleet_processing_seconds_bucket[5m])) by (le))" }]
+    },
+    {
+      "type": "timeseries", "title": "CPU temperature by station (°C)", "gridPos": { "x": 0, "y": 4, "w": 12, "h": 9 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [{ "expr": "fleet_station_cpu_temp_celsius", "legendFormat": "{{station}}" }]
+    },
+    {
+      "type": "timeseries", "title": "Signal SNR by station (dB)", "gridPos": { "x": 12, "y": 4, "w": 12, "h": 9 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [{ "expr": "fleet_station_signal_snr_db", "legendFormat": "{{station}}" }]
+    },
+    {
+      "type": "timeseries", "title": "Alerts by rule (per min)", "gridPos": { "x": 0, "y": 13, "w": 24, "h": 8 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [{ "expr": "sum by (rule) (rate(fleet_alerts_raised_total[5m])) * 60", "legendFormat": "{{rule}}" }]
+    }
+  ]
+}

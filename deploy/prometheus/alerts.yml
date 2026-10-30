@@ -1,0 +1,32 @@
+# Fleet-level alerts, complementing the per-reading rules in the processor.
+groups:
+  - name: fleet
+    rules:
+      - alert: StationOffline
+        expr: fleet_station_online == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "Station {{ $labels.station }} has been offline for 1 minute"
+
+      - alert: StationOverheating
+        expr: fleet_station_cpu_temp_celsius > 85
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: "Station {{ $labels.station }} CPU above 85°C for 2 minutes"
+
+      - alert: ProcessorFallingBehind
+        # Ingest rate well above processing rate means the stream backlog is growing.
+        expr: rate(fleet_readings_ingested_total[2m]) > 1.5 * rate(fleet_readings_processed_total[2m])
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Processor is not keeping up with ingest"
+
+      - alert: HighRejectRate
+        expr: rate(fleet_readings_rejected_total[5m]) > 0.1 * rate(fleet_readings_ingested_total[5m])
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "More than 10% of readings are being rejected"

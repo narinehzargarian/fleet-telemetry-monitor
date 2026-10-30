@@ -1,0 +1,19 @@
+# Go build output
+/server
+/processor
+/simulator
+*.test
+coverage.out
+
+# Terraform
+infra/terraform/.terraform/
+infra/terraform/*.tfstate*
+infra/terraform/.terraform.lock.hcl
+*.tfvars
+
+# Secrets
+.env
+deploy/k8s/secrets.yaml
+
+# Claude worktrees
+.claude/
